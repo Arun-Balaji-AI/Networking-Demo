@@ -1,0 +1,7 @@
+-xc++
+-std=c++17
+--target=x86_64-w64-mingw32
+-I.
+-I/usr/x86_64-w64-mingw32/include
+-I/usr/lib/gcc/x86_64-w64-mingw32/13-posix/include/c++
+-I/usr/lib/gcc/x86_64-w64-mingw32/13-posix/include/c++/x86_64-w64-mingw32
