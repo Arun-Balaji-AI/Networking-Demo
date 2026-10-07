@@ -6,6 +6,8 @@
 #include <server/server.hpp>
 #include <client/client.hpp>
 
+#define BUFFER_SIZE 1024
+
 int main(int argc, char* argv[])
 {
     std::cout << "[TRACE] Staring Initialization..." << std::endl;
@@ -42,6 +44,21 @@ int main(int argc, char* argv[])
             return 1;
         }
 
+        std::string line;
+        char buffer[BUFFER_SIZE];
+
+        while(std::getline(std::cin, line) && line != "quit")
+        {
+            line += "\n";
+            bool success = clientObj.sendData(line.c_str(), line.length());
+
+            if (!success)
+            {
+                break;
+            }
+
+        }
+
         clientObj.close();
 
         return 0;
@@ -69,6 +86,23 @@ int main(int argc, char* argv[])
     if (!serverObj.acceptConnections())
     {
         return 1;
+    }
+
+    char buffer[BUFFER_SIZE];
+
+    while (true)
+    {
+        memset(buffer, 0, BUFFER_SIZE);
+        int dataSize = serverObj.receiveData(buffer, BUFFER_SIZE);
+
+        if (dataSize == 0)
+        {
+            break;
+        }
+
+        buffer[dataSize - 1] = '\0';
+
+        std::cout << "Data: " << buffer << std::endl;
     }
 
     serverObj.close();

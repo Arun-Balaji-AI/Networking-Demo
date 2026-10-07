@@ -19,6 +19,12 @@ public:
     // Accepts incoming connections
     bool acceptConnections();
 
+    // Send data
+    bool sendData(const char* payload, int payloadLen);
+
+    // Receive data
+    int receiveData(char* data, int dataLen);
+
     // Cleanup function
     void close();
 private:

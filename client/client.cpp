@@ -55,8 +55,47 @@ bool Client::connectToServer()
 
     std::cout << "[TRACE] Connection to server successfull.\n Now client can send or receive data from server," << std::endl;
 
-    system("pause");
     return true;
+}
+
+bool Client::sendData(const char* payload, int payloadLen)
+{
+    int success = send(socket_, payload, payloadLen, 0);
+
+    if (success == SOCKET_ERROR)
+    {
+        std::cout << "[ERROR] Error while sending the data. " << WSAGetLastError() << std::endl;
+        return false;
+    }
+
+    std::cout << "[TRACE] Data sent successfully." << std::endl;
+
+    return true;
+}
+
+int Client::receiveData(char* data, int dataLen)
+{
+    int packets;
+    int totalBytes = 0;
+
+    while ((packets = recv(socket_, data + totalBytes, dataLen - totalBytes - 1, 0)))
+    {
+        data[totalBytes] = '\0';
+        if (data[totalBytes] - 1 == '\n')
+        {
+            break;
+        }
+    }
+
+    if (packets == SOCKET_ERROR)
+    {
+        std::cout << "[ERROR] Error while receiving the data. " << WSAGetLastError() << std::endl;
+        return 0;
+    }
+
+    std::cout << "[TRACE] Data received successfully" << std::endl;
+
+    return totalBytes;
 }
 
 void Client::close()
