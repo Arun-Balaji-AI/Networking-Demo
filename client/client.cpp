@@ -1,12 +1,28 @@
-#include <iostream>
-
 #include "client.hpp"
 #include <ws2tcpip.h>
+#include <thread>
+#include <conio.h>
 
+#include<traces/traces.hpp>
+
+#define BUFFER_SIZE 1024
 
 Client::Client()
 {
-    std::cout << "[TRACE] Client Object created successfully." << std::endl;
+    Trace::printTraces("Client Object created successfully.", false);
+
+    Trace::printTraces("Starting init()...", false);
+    isRunnable = init();
+
+    if (isRunnable)
+    {
+        isRunnable = connectToServer();
+    }
+
+    if (!isRunnable)
+    {
+        close();
+    }
 }
 
 bool Client::init()
@@ -18,21 +34,21 @@ bool Client::init()
 
     if (result != 0)
     {
-        std::cout << "[ERROR] WSAStartup failed. " << WSAGetLastError() << std::endl;
+        Trace::printTraces("WSAStartup failed. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
-    std::cout << "[TRACE] WSAStartup success." << std::endl;
+    Trace::printTraces("WSAStartup success.", false);
 
     socket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (socket_ == INVALID_SOCKET)
     {
-        std::cout << "[ERROR] Error while creating socket. " << WSAGetLastError() << std::endl;
+        Trace::printTraces("Error while creating socket. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
-    std::cout << "[TRACE] Socket created successfully." << std::endl;
+    Trace::printTraces("Socket created successfully.", false);
     return true;
 }
 
@@ -49,11 +65,11 @@ bool Client::connectToServer()
 
     if (result == SOCKET_ERROR)
     {
-        std::cout << "[ERROR] Connect failed. " << WSAGetLastError() << std::endl;
+        Trace::printTraces("Connect failed. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
-    std::cout << "[TRACE] Connection to server successfull.\n Now client can send or receive data from server," << std::endl;
+    Trace::printTraces("Connection to server successfull. Now client can send or receive data from server...", false);
 
     return true;
 }
@@ -64,24 +80,26 @@ bool Client::sendData(const char* payload, int payloadLen)
 
     if (success == SOCKET_ERROR)
     {
-        std::cout << "[ERROR] Error while sending the data. " << WSAGetLastError() << std::endl;
+        Trace::printTraces("Error while sending the data. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
-    std::cout << "[TRACE] Data sent successfully." << std::endl;
+    Trace::printTraces("Data sent successfully.", false);
 
     return true;
 }
 
 int Client::receiveData(char* data, int dataLen)
 {
+    Trace::printTraces("Receiving data...", false);
     int packets;
     int totalBytes = 0;
 
-    while ((packets = recv(socket_, data + totalBytes, dataLen - totalBytes - 1, 0)))
+    while ((packets = recv(socket_, data + totalBytes, dataLen - totalBytes - 1, 0)) > 0)
     {
+        totalBytes += packets;
         data[totalBytes] = '\0';
-        if (data[totalBytes] - 1 == '\n')
+        if (data[totalBytes - 1] == '\n')
         {
             break;
         }
@@ -89,19 +107,71 @@ int Client::receiveData(char* data, int dataLen)
 
     if (packets == SOCKET_ERROR)
     {
-        std::cout << "[ERROR] Error while receiving the data. " << WSAGetLastError() << std::endl;
+        Trace::printTraces("Error while receiving the data. " + std::to_string(WSAGetLastError()), true);
         return 0;
     }
 
-    std::cout << "[TRACE] Data received successfully" << std::endl;
+    Trace::printTraces("Data received successfully", false);
 
     return totalBytes;
+}
+
+void Client::sendLoop()
+{
+    std::string line;
+    while (running_ && std::getline(std::cin, line))
+    {
+        if (line == "quit")
+        {
+            break;
+        }
+
+        line += "\n";
+
+        int success = sendData(line.c_str(), line.length());
+
+        if (success <= 0)
+        {
+            Trace::printTraces("Error while sending the data..." + std::to_string(WSAGetLastError()), true);
+            break;
+        }
+
+        Trace::printTraces("Data sent successfully...", false);
+    }
+
+    running_ = false;
+}
+
+void Client::receiveLoop()
+{
+    char buffer[BUFFER_SIZE];
+
+    while (running_)
+    {
+        memset(buffer, 0, BUFFER_SIZE);
+        int success = receiveData(buffer, BUFFER_SIZE);
+
+        if (success <= 0)
+        {
+            Trace::printTraces("Error while receiving data..." + std::to_string(WSAGetLastError()), true);
+            break;
+        }
+
+        buffer[success - 1] = '\0';
+
+        std::cout << "> " << buffer << std::endl;
+    }
+}
+
+void Client::shutdownSocket()
+{
+    ::shutdown(socket_, SD_BOTH);
 }
 
 void Client::close()
 {
     WSACleanup();
-    std::cout << "[TRACE] WSACleanup success." << std::endl;
+    Trace::printTraces("WSACleanup success.", false);
     closesocket(socket_);
-    std::cout << "[TRACE] closesocket success." << std::endl;
+    Trace::printTraces("closesocket success.", false);
 }

@@ -1,11 +1,36 @@
 #pragma once
 
 #include<winsock2.h>
+#include <atomic>
 
 class Server
 {
 public:
     explicit Server();
+
+    // Send data
+    bool sendData(const char* payload, int payloadLen);
+
+    // Receive data
+    int receiveData(char* data, int dataLen);
+
+    // sendLoop function
+    void sendLoop();
+
+    // receiveLoop function
+    void receiveLoop();
+
+    // shutdown the socket
+    void shutdownSocket();
+
+    // Cleanup function
+    void close();
+
+    bool isRunnable{false};
+private:
+    SOCKET socket_;
+    SOCKET listeningSocket_;
+    std::atomic<bool> running_{true};
 
     // Initialzer function
     bool init();
@@ -18,16 +43,4 @@ public:
 
     // Accepts incoming connections
     bool acceptConnections();
-
-    // Send data
-    bool sendData(const char* payload, int payloadLen);
-
-    // Receive data
-    int receiveData(char* data, int dataLen);
-
-    // Cleanup function
-    void close();
-private:
-    SOCKET socket_;
-    SOCKET listeningSocket_;
 }; // class Server
