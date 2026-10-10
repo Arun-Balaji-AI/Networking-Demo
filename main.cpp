@@ -12,27 +12,31 @@
 
 int main(int argc, char* argv[])
 {
-    Trace::printTraces("Starting Initialization...", false);
     bool clientMode = false;
+    bool verbose = false;
+
     if (argc > 1)
     {    
-        Trace::printTraces("Command-line arguments: ", false);
         for (int i = 1; i < argc; i++)
         {
             if (std::string_view(argv[i]) == "Client")
             {
                 clientMode = true;
             }
-            std::cout << argv[i] << " ";
+
+            if (std::string_view(argv[i]) == "--verbose" || std::string_view(argv[i]) == "-v")
+            {
+                verbose = true;
+            }
+
         }
 
-        std::cout << std::endl;
     }
 
     // Runs client if the binary/executable is started with Client
     if (clientMode)
     {
-        Client clientObj;
+        Client clientObj(verbose);
 
         if (!clientObj.isRunnable)
         {
@@ -50,7 +54,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    Server serverObj;
+    Server serverObj(verbose);
 
     if (!serverObj.isRunnable)
     {

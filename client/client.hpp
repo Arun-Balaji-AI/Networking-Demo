@@ -6,7 +6,7 @@
 class Client
 {
 public:
-    explicit Client();
+    explicit Client(bool verbose);
 
     // Send the payload to server
     bool sendData(const char* payload, int payloadLen);
@@ -29,6 +29,7 @@ public:
 private:
     SOCKET socket_;
     std::atomic<bool> running_ {true};
+    bool verbose_ {false};
 
     // Initialization
     bool init();

@@ -6,7 +6,7 @@
 class Server
 {
 public:
-    explicit Server();
+    explicit Server(bool verbose);
 
     // Send data
     bool sendData(const char* payload, int payloadLen);
@@ -30,6 +30,7 @@ public:
 private:
     SOCKET socket_;
     SOCKET listeningSocket_;
+    bool verbose_ {false};
     std::atomic<bool> running_{true};
 
     // Initialzer function
