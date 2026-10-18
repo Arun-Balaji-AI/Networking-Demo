@@ -6,7 +6,6 @@
 
 #include <server/server.hpp>
 #include <client/client.hpp>
-#include <traces/traces.hpp>
 
 #define BUFFER_SIZE 1024
 

@@ -2,6 +2,9 @@
 
 #include<winsock2.h>
 #include <atomic>
+#include <mutex>
+#include <string>
+#include <utils/utils.hpp>
 
 class Server
 {
@@ -20,6 +23,10 @@ public:
     // receiveLoop function
     void receiveLoop();
 
+    void redrawMessage();
+
+    void printMessage(const char* buffer);
+
     // shutdown the socket
     void shutdownSocket();
 
@@ -32,6 +39,10 @@ private:
     SOCKET listeningSocket_;
     bool verbose_ {false};
     std::atomic<bool> running_{true};
+    std::mutex ioMutex_;
+    Utils::payloadData_t payloadData_ {};
+
+    std::string currMsg_;
 
     // Initialzer function
     bool init();

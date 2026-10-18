@@ -1,5 +1,8 @@
 #include <iostream>
-#include <traces/traces.hpp>
+#include <utils/utils.hpp>
+#include<cstring>
+#include <thread>
+#include <conio.h>
 
 #include "server.hpp"
 #include <ws2tcpip.h>
@@ -12,8 +15,8 @@ Server::Server(bool verbose)
 
     if (verbose)
     {
-        Trace::printTraces("Server object created successfully...", false);
-        Trace::printTraces("---Starting init()---", false);
+        Utils::printTraces("Server object created successfully...", false);
+        Utils::printTraces("---Starting init()---", false);
     }
     isRunnable = init();
 
@@ -48,23 +51,23 @@ bool Server::init()
     if (result != 0)
     {
         if (verbose_)
-            Trace::printTraces("WSAStartup Failed. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("WSAStartup Failed. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
     if (verbose_)
-        Trace::printTraces("WSAStartup Success.", false);
+        Utils::printTraces("WSAStartup Success.", false);
 
     socket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (socket_ == INVALID_SOCKET)
     {
         if (verbose_)
-            Trace::printTraces("Error while creating socket. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Error while creating socket. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
     if (verbose_)
-        Trace::printTraces("Socket created successfully.", false);
+        Utils::printTraces("Socket created successfully.", false);
 
     return true;
 }
@@ -81,12 +84,12 @@ bool Server::bindSocket()
     if (result == SOCKET_ERROR)
     {
         if (verbose_)
-            Trace::printTraces("Error while binding socket. " + std::to_string(WSAGetLastError()), false);
+            Utils::printTraces("Error while binding socket. " + std::to_string(WSAGetLastError()), false);
         return false;
     }
 
     if (verbose_)
-        Trace::printTraces("Socket is bound successfully.", false);
+        Utils::printTraces("Socket is bound successfully.", false);
 
     return true;
 }
@@ -100,12 +103,12 @@ bool Server::setListenState()
     if (result == SOCKET_ERROR)
     {
         if (verbose_)
-            Trace::printTraces("Error while setting the socket to listening state. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Error while setting the socket to listening state. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
     if (verbose_)
-        Trace::printTraces("Socket state set to listen successfully.", false);
+        Utils::printTraces("Socket state set to listen successfully.", false);
     return true;
 }
 
@@ -116,12 +119,12 @@ bool Server::acceptConnections()
     if (listeningSocket_ == INVALID_SOCKET)
     {
         if (verbose_)
-            Trace::printTraces("Error while accept() is initiated. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Error while accept() is initiated. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
     if (verbose_)
-        Trace::printTraces("accept() is successfull.", false);
+        Utils::printTraces("accept() is successfull.", false);
 
     return true;
 }
@@ -133,19 +136,19 @@ bool Server::sendData(const char* payload, int payloadLen)
     if (success == SOCKET_ERROR)
     {
         if (verbose_)
-            Trace::printTraces("Payload not sent. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Payload not sent. " + std::to_string(WSAGetLastError()), true);
          return false;
     }
 
     if (verbose_)
-        Trace::printTraces("Payload sent to client successfully.", false);
+        Utils::printTraces("Payload sent to client successfully.", false);
     return true;
 }
 
 int Server::receiveData(char* data, int dataLen)
 {
     if (verbose_)
-        Trace::printTraces("Receiving data...", false);
+        Utils::printTraces("Receiving data...", false);
    int packets;
    int totalBytes = 0;
 
@@ -162,34 +165,75 @@ int Server::receiveData(char* data, int dataLen)
    if (packets == SOCKET_ERROR)
    {
        if (verbose_)
-            Trace::printTraces("Error while receiving the data. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Error while receiving the data. " + std::to_string(WSAGetLastError()), true);
        return 0;
    }
 
    if (verbose_)
-        Trace::printTraces("Data received successfully", false);
+        Utils::printTraces("Data received successfully", false);
 
    return totalBytes;
 }
 
 void Server::sendLoop()
 {
-    std::string line;
-
-    while(running_ && std::getline(std::cin, line))
     {
-        if (line == "quit")
+        std::lock_guard<std::mutex> lock(ioMutex_);
+        redrawMessage();
+    }
+
+    while(running_)
+    {
+        if (!_kbhit())
         {
-            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
         }
 
-        line += "\n";
+        int ch = _getch();
 
-        int success = sendData(line.c_str(), line.length());
-
-        if (success <= 0)
+        if (ch == 0 || ch == 224)
         {
-            break;
+            continue;
+        }
+
+        if (ch == '\r')
+        {
+            std::string line = currMsg_;
+            line += "\n";
+            currMsg_.clear();
+            std::cout << '\n';
+            redrawMessage();
+
+            if (line.empty() || line == "quit")
+            {
+                break;
+            }
+
+
+            std::strncpy(payloadData_.buffer, line.c_str(), sizeof(payloadData_.buffer) - 1);
+
+            int success = sendData(line.c_str(), line.length());
+
+            if (success <= 0)
+            {
+                break;
+            }
+        }
+        else if (ch == 8)
+        {
+            std::lock_guard<std::mutex> lock(ioMutex_);
+            if (!currMsg_.empty())
+            {
+                currMsg_.pop_back();
+                std::cout << "\b \b" << std::flush;
+            }
+        }
+        else if (ch >= 32 && ch < 127)
+        {
+            std::lock_guard<std::mutex> lock(ioMutex_);
+            currMsg_.push_back(static_cast<char>(ch));
+            std::cout << static_cast<char>(ch) << std::flush;
         }
     }
 
@@ -212,9 +256,23 @@ void Server::receiveLoop()
         }
 
         buffer[success - 1] = '\0';
-
-        std::cout << "> " << buffer << std::endl;
+        
+        printMessage(buffer);
     }
+}
+
+void Server::redrawMessage()
+{
+    std::cout << Utils::sendLine << currMsg_ << std::flush;
+}
+
+void Server::printMessage(const char* buffer)
+{
+    std::cout << '\r' << std::string(2 + currMsg_.size(), ' ') << '\r' << std::flush;
+
+    std::cout << Utils::recvLine << buffer << std::endl;
+
+    redrawMessage();
 }
 
 void Server::shutdownSocket()
@@ -226,8 +284,8 @@ void Server::close()
 {
     WSACleanup();
     if (verbose_)
-        Trace::printTraces("WSACleanup Success.", false);
+        Utils::printTraces("WSACleanup Success.", false);
     closesocket(socket_);
     if (verbose_)
-        Trace::printTraces("closesocket Sucess.", false);
+        Utils::printTraces("closesocket Sucess.", false);
 }

@@ -2,7 +2,7 @@
 #include <ws2tcpip.h>
 #include <conio.h>
 
-#include<traces/traces.hpp>
+#include<utils/utils.hpp>
 
 #define BUFFER_SIZE 1024
 
@@ -12,8 +12,8 @@ Client::Client(bool verbose)
 
     if (verbose_)
     {
-        Trace::printTraces("Client Object created successfully.", false);
-        Trace::printTraces("Starting init()...", false);
+        Utils::printTraces("Client Object created successfully.", false);
+        Utils::printTraces("Starting init()...", false);
     }
 
     isRunnable = init();
@@ -39,24 +39,24 @@ bool Client::init()
     if (result != 0)
     {
         if (verbose_)
-            Trace::printTraces("WSAStartup failed. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("WSAStartup failed. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
     
     if (verbose_)
-        Trace::printTraces("WSAStartup success.", false);
+        Utils::printTraces("WSAStartup success.", false);
 
     socket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (socket_ == INVALID_SOCKET)
     {
         if (verbose_)
-            Trace::printTraces("Error while creating socket. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Error while creating socket. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
     if (verbose_)
-        Trace::printTraces("Socket created successfully.", false);
+        Utils::printTraces("Socket created successfully.", false);
     return true;
 }
 
@@ -74,12 +74,12 @@ bool Client::connectToServer()
     if (result == SOCKET_ERROR)
     {
         if (verbose_)
-            Trace::printTraces("Connect failed. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Connect failed. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
     if (verbose_)
-        Trace::printTraces("Connection to server successfull. Now client can send or receive data from server...", false);
+        Utils::printTraces("Connection to server successfull. Now client can send or receive data from server...", false);
 
     return true;
 }
@@ -91,12 +91,12 @@ bool Client::sendData(const char* payload, int payloadLen)
     if (success == SOCKET_ERROR)
     {
         if (verbose_)
-            Trace::printTraces("Error while sending the data. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Error while sending the data. " + std::to_string(WSAGetLastError()), true);
         return false;
     }
 
     if (verbose_)
-        Trace::printTraces("Data sent successfully.", false);
+        Utils::printTraces("Data sent successfully.", false);
 
     return true;
 }
@@ -104,7 +104,7 @@ bool Client::sendData(const char* payload, int payloadLen)
 int Client::receiveData(char* data, int dataLen)
 {
     if (verbose_)
-        Trace::printTraces("Receiving data...", false);
+        Utils::printTraces("Receiving data...", false);
     int packets;
     int totalBytes = 0;
 
@@ -121,12 +121,12 @@ int Client::receiveData(char* data, int dataLen)
     if (packets == SOCKET_ERROR)
     {
         if (verbose_)
-            Trace::printTraces("Error while receiving the data. " + std::to_string(WSAGetLastError()), true);
+            Utils::printTraces("Error while receiving the data. " + std::to_string(WSAGetLastError()), true);
         return 0;
     }
 
     if (verbose_)
-        Trace::printTraces("Data received successfully", false);
+        Utils::printTraces("Data received successfully", false);
 
     return totalBytes;
 }
@@ -183,8 +183,8 @@ void Client::close()
 {
     WSACleanup();
     if (verbose_)
-        Trace::printTraces("WSACleanup success.", false);
+        Utils::printTraces("WSACleanup success.", false);
     closesocket(socket_);
     if (verbose_)
-        Trace::printTraces("closesocket success.", false);
+        Utils::printTraces("closesocket success.", false);
 }

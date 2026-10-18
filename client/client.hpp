@@ -22,6 +22,7 @@ public:
 
     void shutdownSocket();
 
+    void redrawLine();
     // Cleanup
     void close();
 
