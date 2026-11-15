@@ -2,6 +2,8 @@
 
 #include <winsock2.h>
 #include <atomic>
+#include <mutex>
+#include <string>
 
 class Client
 {
@@ -22,7 +24,6 @@ public:
 
     void shutdownSocket();
 
-    void redrawLine();
     // Cleanup
     void close();
 
@@ -32,9 +33,16 @@ private:
     std::atomic<bool> running_ {true};
     bool verbose_ {false};
 
+    std::string currMsg_;
+
+    std::mutex ioMutex_;
     // Initialization
     bool init();
 
     // Creates a connection to the server
     bool connectToServer();
+
+    void redrawMessage();
+
+    void printMessage(const char* buffer);
 }; //class Client

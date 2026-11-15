@@ -1,6 +1,7 @@
 #include "client.hpp"
 #include <ws2tcpip.h>
 #include <conio.h>
+#include <thread>
 
 #include<utils/utils.hpp>
 
@@ -133,21 +134,61 @@ int Client::receiveData(char* data, int dataLen)
 
 void Client::sendLoop()
 {
-    std::string line;
-    while (running_ && std::getline(std::cin, line))
     {
-        if (line == "quit")
+        std::lock_guard<std::mutex> lock(ioMutex_);
+        redrawMessage();
+    }
+    while (running_)
+    {
+        if (!_kbhit())
         {
-            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
         }
 
-        line += "\n";
+        int ch = _getch();
 
-        int success = sendData(line.c_str(), line.length());
-
-        if (success <= 0)
+        if (ch == 0 || ch == 224)
         {
-            break;
+            continue;
+        }
+        else if (ch == 8)
+        {
+            std::lock_guard<std::mutex> lock(ioMutex_);
+            
+            if (!currMsg_.empty())
+            {
+                currMsg_.pop_back();
+                std::cout << "\b \b" << std::flush;
+            }
+        }
+        else if (ch >= 32 && ch <= 127)
+        {
+            std::lock_guard<std::mutex> lock(ioMutex_);
+
+            currMsg_.push_back(static_cast<char>(ch));
+            std::cout << static_cast<char>(ch) << std::flush; 
+        }
+        else if (ch == 13)
+        {
+            if (currMsg_.empty() || currMsg_ == "quit")
+            {
+                break;
+            }
+            std::string line = currMsg_;
+            line += "\n";
+            std::cout << std::endl;
+            {
+                std::lock_guard<std::mutex> lock(ioMutex_);
+                currMsg_.clear();
+            }
+
+           int success = sendData(line.c_str(), line.length());
+
+           if (success <= 0)
+           {
+               break;
+           }
         }
     }
 
@@ -170,8 +211,21 @@ void Client::receiveLoop()
 
         buffer[success - 1] = '\0';
 
-        std::cout << "> " << buffer << std::endl;
+        printMessage(buffer);
     }
+}
+
+void Client::printMessage(const char* buffer)
+{
+    std::cout << std::string(2 + currMsg_.size(), ' ') << std::flush;
+    std::cout << Utils::recvLine << buffer << std::endl;
+
+    redrawMessage();
+}
+
+void Client::redrawMessage()
+{
+    std::cout << Utils::sendLine << currMsg_ << std::flush;
 }
 
 void Client::shutdownSocket()
